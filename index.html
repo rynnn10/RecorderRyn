@@ -2,460 +2,217 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cek Dukungan Rekam Layar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Meta tag PWA -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>ScreenRec Pro</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; overscroll-behavior: none; }
+        canvas { max-width: 100%; max-height: 80vh; object-fit: contain; }
+        .hidden { display: none !important; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white p-4 font-sans">
+<body class="text-white h-screen flex flex-col overflow-hidden">
 
-    <div class="max-w-md mx-auto space-y-6">
-        
-        <header class="border-b border-gray-700 pb-4">
-            <h1 class="text-xl font-bold text-yellow-400"><i class="fa-solid fa-stethoscope"></i> Diagnosa HP</h1>
-            <p class="text-gray-400 text-sm">Kenapa saya tidak bisa rekam layar?</p>
-        </header>
-
-        <!-- Status Box -->
-        <div id="statusCard" class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-            <h2 class="font-bold mb-3">Hasil Pengecekan Sistem:</h2>
-            
-            <!-- Cek 1: Protokol -->
-            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
-                <span class="text-sm">1. Protokol Aman (HTTPS)</span>
-                <span id="statusProtocol" class="text-xs font-mono px-2 py-1 rounded bg-gray-700">Checking...</span>
-            </div>
-
-            <!-- Cek 2: API Layar -->
-            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
-                <span class="text-sm">2. Fitur Layar (API)</span>
-                <span id="statusAPI" class="text-xs font-mono px-2 py-1 rounded bg-gray-700">Checking...</span>
-            </div>
-
-            <!-- Kesimpulan -->
-            <div id="conclusion" class="mt-4 p-3 bg-blue-900/30 text-blue-200 text-sm rounded border border-blue-500/50 hidden">
-                Menunggu hasil diagnosa...
-            </div>
-        </div>
-
-        <!-- Area Video (Jika Berhasil) -->
-        <div id="demoArea" class="hidden space-y-4">
-            <p class="text-green-400 text-sm text-center font-bold">Selamat! HP Anda mendukung.</p>
-            <video id="preview" autoplay muted class="w-full bg-black rounded-lg border border-green-500" style="max-height: 400px;"></video>
-            <button onclick="startTest()" class="w-full py-3 bg-green-600 hover:bg-green-500 rounded font-bold shadow-lg">
-                Coba Rekam Sekarang
-            </button>
-        </div>
-
-        <!-- Panduan Hosting (Jika Gagal) -->
-        <div id="fixGuide" class="hidden space-y-4">
-            <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/50">
-                <h3 class="font-bold text-red-300 mb-2"><i class="fa-solid fa-triangle-exclamation"></i> Masalah Ditemukan</h3>
-                <p id="fixText" class="text-sm text-gray-300">Penjelasan error...</p>
-            </div>
-
-            <div class="bg-gray-800 p-4 rounded-lg">
-                <h3 class="font-bold text-white mb-2">Solusi: Jangan Buka File Langsung!</h3>
-                <ol class="list-decimal list-inside text-sm text-gray-400 space-y-2">
-                    <li>Kode ini tidak akan jalan jika alamatnya <code>file://...</code></li>
-                    <li>Gunakan situs hosting gratis untuk menjalankannya.</li>
-                    <li>Kunjungi <a href="https://tiiny.host/" target="_blank" class="text-blue-400 underline">Tiiny.host</a> (atau yang serupa).</li>
-                    <li>Upload file HTML ini ke sana.</li>
-                    <li>Buka link yang diberikan (https://...).</li>
-                    <li>Coba lagi, pasti bisa!</li>
-                </ol>
-            </div>
-        </div>
-
+    <!-- Header App -->
+    <div class="flex justify-between items-center p-4 bg-slate-800 border-b border-slate-700 select-none">
+        <h1 class="font-bold text-lg flex items-center gap-2">
+            <i class="fa-solid fa-video text-blue-500"></i> Recorder
+        </h1>
+        <!-- Tombol Install PWA (Akan muncul otomatis) -->
+        <button id="btnInstall" class="hidden text-xs bg-white text-slate-900 px-3 py-1 rounded-full font-bold">
+            <i class="fa-solid fa-download"></i> Install App
+        </button>
     </div>
 
-    <script>
-        // --- System Check ---
-        const statusProtocol = document.getElementById('statusProtocol');
-        const statusAPI = document.getElementById('statusAPI');
-        const conclusion = document.getElementById('conclusion');
-        const demoArea = document.getElementById('demoArea');
-        const fixGuide = document.getElementById('fixGuide');
-        const fixText = document.getElementById('fixText');
+    <!-- Main Content -->
+    <div class="flex-grow relative flex flex-col items-center justify-center p-2 bg-black">
+        <div id="instruction" class="absolute text-center text-slate-500 pointer-events-none z-10">
+            <i class="fa-solid fa-layer-group text-4xl mb-2"></i>
+            <p>Preview akan muncul di sini</p>
+        </div>
+        
+        <canvas id="mainCanvas" class="w-full h-full"></canvas>
+        
+        <video id="screenVid" autoplay muted playsinline class="hidden"></video>
+        <video id="camVid" autoplay muted playsinline class="hidden"></video>
+    </div>
 
-        function runDiagnostics() {
-            let isSecure = false;
-            let hasAPI = false;
-
-            // 1. Cek Protokol (HTTPS / Localhost)
-            const protocol = window.location.protocol;
-            if (protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                statusProtocol.textContent = "AMAN (HTTPS/Local)";
-                statusProtocol.className = "text-xs font-mono px-2 py-1 rounded bg-green-600 text-white";
-                isSecure = true;
-            } else {
-                statusProtocol.textContent = "TIDAK AMAN (" + protocol + ")";
-                statusProtocol.className = "text-xs font-mono px-2 py-1 rounded bg-red-600 text-white";
-            }
-
-            // 2. Cek API
-            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-                statusAPI.textContent = "ADA (Supported)";
-                statusAPI.className = "text-xs font-mono px-2 py-1 rounded bg-green-600 text-white";
-                hasAPI = true;
-            } else {
-                statusAPI.textContent = "HILANG (Missing)";
-                statusAPI.className = "text-xs font-mono px-2 py-1 rounded bg-red-600 text-white";
-            }
-
-            // 3. Kesimpulan
-            conclusion.classList.remove('hidden');
-            
-            if (!isSecure) {
-                conclusion.innerHTML = "<strong>Penyebab Gagal:</strong> Anda membuka file secara langsung (Offline/File). Browser memblokir fitur kamera/layar demi keamanan.";
-                conclusion.className = "mt-4 p-3 bg-red-900/30 text-red-200 text-sm rounded border border-red-500/50";
-                
-                fixGuide.classList.remove('hidden');
-                fixText.textContent = "Browser modern memblokir akses layar pada file lokal. Anda harus meng-upload file ini ke internet (hosting) agar menjadi link HTTPS.";
-            
-            } else if (isSecure && !hasAPI) {
-                conclusion.innerHTML = "<strong>Penyebab Gagal:</strong> HP/Browser Anda memang tidak mendukung fitur ini meskipun sudah pakai HTTPS.";
-                conclusion.className = "mt-4 p-3 bg-orange-900/30 text-orange-200 text-sm rounded border border-orange-500/50";
-                
-                fixGuide.classList.remove('hidden');
-                fixText.innerHTML = "Coba update Chrome, atau buka <code>chrome://flags</code> dan aktifkan 'Screen Capture'. Jika tetap gagal, berarti hardware/OS membatasi.";
-
-            } else {
-                conclusion.innerHTML = "<strong>Sistem Normal:</strong> Seharusnya rekam layar bisa berjalan.";
-                conclusion.className = "mt-4 p-3 bg-green-900/30 text-green-200 text-sm rounded border border-green-500/50";
-                demoArea.classList.remove('hidden');
-            }
-        }
-
-        async function startTest() {
-            try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                document.getElementById('preview').srcObject = stream;
-            } catch (err) {
-                alert("Error saat mencoba merekam: " + err.message);
-            }
-        }
-
-        // Jalankan saat load
-        window.addEventListener('load', runDiagnostics);
-
-    </script>
-</body>
-</html>
-
-                <i class="fa-solid fa-download mr-2"></i> Download Video (.mp4)
-            </a>
-            <button onclick="location.reload()" class="block w-full mt-3 text-xs text-gray-400 underline">Rekam Ulang</button>
+    <!-- Controls Bottom Sheet -->
+    <div class="bg-slate-800 p-4 rounded-t-2xl border-t border-slate-700 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+        
+        <div class="flex justify-center mb-4 gap-6">
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="chkMic" checked class="accent-blue-500 w-4 h-4"> Mic
+            </label>
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="chkCam" checked class="accent-blue-500 w-4 h-4"> Cam
+            </label>
         </div>
 
-    </main>
+        <div class="space-y-3">
+            <button id="btnStart" onclick="startRecording()" class="w-full py-3 bg-blue-600 active:bg-blue-700 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-circle text-xs"></i> Mulai Rekam
+            </button>
 
-    <script>
-        // --- Variables ---
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d');
-        const screenVideo = document.getElementById('screenVideo');
-        const camVideo = document.getElementById('camVideo');
-        
-        // UI Elements
-        const btnStart = document.getElementById('btnStart');
-        const btnStop = document.getElementById('btnStop');
-        const btnCamOnly = document.getElementById('btnCamOnly');
-        const statusBox = document.getElementById('statusBox');
-        const placeholder = document.getElementById('placeholder');
-        const timerEl = document.getElementById('timer');
-        const downloadArea = document.getElementById('downloadArea');
-        const downloadLink = document.getElementById('downloadLink');
-
-        let mediaRecorder;
-        let chunks = [];
-        let streams = []; // Menyimpan semua stream untuk dimatikan nanti
-        let isRecording = false;
-        let animationId;
-        let audioCtx, destNode;
-        let startTime, timerInt;
-
-        // --- Helper: Status Message ---
-        function showStatus(msg, type = 'info') {
-            statusBox.classList.remove('hidden', 'bg-red-900', 'bg-blue-900', 'text-red-200', 'text-blue-200');
-            statusBox.classList.add('flex', 'items-center', 'gap-2');
+            <button id="btnStop" onclick="stopRecording()" class="hidden w-full py-3 bg-red-600 active:bg-red-700 rounded-xl font-bold text-lg shadow-lg animate-pulse">
+                Stop
+            </button>
             
-            if (type === 'error') {
-                statusBox.classList.add('bg-red-900/80', 'text-red-200', 'border', 'border-red-500');
-                statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>${msg}</span>`;
-            } else {
-                statusBox.classList.add('bg-blue-900/80', 'text-blue-200', 'border', 'border-blue-500');
-                statusBox.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${msg}</span>`;
+            <a id="btnDownload" class="hidden w-full py-3 bg-emerald-600 active:bg-emerald-700 rounded-xl font-bold text-center block">
+                Simpan Video
+            </a>
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // --- PWA INSTALL LOGIC ---
+        let deferredPrompt;
+        const btnInstall = document.getElementById('btnInstall');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstall.classList.remove('hidden');
+        });
+
+        btnInstall.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    btnInstall.classList.add('hidden');
+                }
+                deferredPrompt = null;
             }
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
         }
 
-        // --- Core: Start Recording ---
-        async function startRecording() {
-            resetUI();
-            
-            // Cek kompatibilitas browser HP
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                showStatus("Browser HP ini memblokir akses Rekam Layar (terutama iOS/Samsung Internet). Coba gunakan Chrome Android atau Mode Kamera Saja.", "error");
-                btnStart.classList.add('hidden');
-                btnCamOnly.classList.remove('hidden'); // Tawarkan opsi fallback
-                return;
-            }
+        // --- RECORDING LOGIC (Sama seperti sebelumnya) ---
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const screenVid = document.getElementById('screenVid');
+        const camVid = document.getElementById('camVid');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const btnDownload = document.getElementById('btnDownload');
+        
+        let mediaRecorder, chunks = [], streams = [], isRecording = false;
+        let audioCtx, destNode;
 
+        async function startRecording() {
             try {
-                // 1. Setup Audio Mixer
+                // Audio Context
                 audioCtx = new AudioContext();
                 destNode = audioCtx.createMediaStreamDestination();
 
-                // 2. Minta Izin Layar (Screen)
-                // Note: Di HP, ini akan memicu popup sistem Android "Start recording or casting?"
+                // 1. Get Screen
                 const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        width: { ideal: 1280 }, // Resolusi HD agar tidak terlalu berat di HP
-                        height: { ideal: 720 },
-                        frameRate: 30
-                    },
-                    audio: true // Minta audio sistem
+                    video: { frameRate: { ideal: 30 } },
+                    audio: true
                 });
-                
-                screenVideo.srcObject = displayStream;
-                await screenVideo.play();
+                screenVid.srcObject = displayStream;
+                await screenVid.play();
                 streams.push(displayStream);
 
-                // Setup ukuran Canvas sesuai layar yang direkam
-                const trackSettings = displayStream.getVideoTracks()[0].getSettings();
-                canvas.width = trackSettings.width || 1280;
-                canvas.height = trackSettings.height || 720;
+                // Set Canvas Size dynamic
+                const settings = displayStream.getVideoTracks()[0].getSettings();
+                canvas.width = settings.width || window.innerWidth;
+                canvas.height = settings.height || window.innerHeight;
 
-                // Masukkan audio layar ke mixer
+                // Mix Screen Audio
                 if (displayStream.getAudioTracks().length > 0) {
-                    const src = audioCtx.createMediaStreamSource(displayStream);
-                    src.connect(destNode);
+                    audioCtx.createMediaStreamSource(displayStream).connect(destNode);
                 }
 
-                // Event listener jika user stop lewat tombol bawaan browser/HP
-                displayStream.getVideoTracks()[0].onended = () => stopRecording();
+                displayStream.getVideoTracks()[0].onended = stopRecording;
 
-                // 3. Minta Izin Kamera (Cam) & Mic - Jika dicentang
-                const useCam = document.getElementById('toggleCam').checked;
-                const useMic = document.getElementById('toggleMic').checked;
-
-                if (useCam || useMic) {
-                    try {
-                        const userStream = await navigator.mediaDevices.getUserMedia({
-                            video: useCam ? { facingMode: 'user', width: 320 } : false,
-                            audio: useMic
-                        });
-                        
-                        streams.push(userStream);
-
-                        if (useCam) {
-                            camVideo.srcObject = userStream;
-                            await camVideo.play();
-                        }
-                        
-                        if (useMic && userStream.getAudioTracks().length > 0) {
-                            const micSrc = audioCtx.createMediaStreamSource(userStream);
-                            micSrc.connect(destNode);
-                        }
-                    } catch (err) {
-                        console.warn("Gagal akses kamera/mic:", err);
-                        showStatus("Gagal akses Kamera/Mic, tapi rekam layar tetap jalan.", "info");
+                // 2. Get Cam & Mic
+                if (document.getElementById('chkCam').checked || document.getElementById('chkMic').checked) {
+                    const userStream = await navigator.mediaDevices.getUserMedia({
+                        video: document.getElementById('chkCam').checked ? { facingMode: 'user', width: {ideal: 640} } : false,
+                        audio: document.getElementById('chkMic').checked
+                    });
+                    streams.push(userStream);
+                    
+                    if (document.getElementById('chkCam').checked) {
+                        camVid.srcObject = userStream;
+                        await camVid.play();
+                    }
+                    if (document.getElementById('chkMic').checked) {
+                        audioCtx.createMediaStreamSource(userStream).connect(destNode);
                     }
                 }
 
-                // 4. Mulai Menggambar & Merekam
+                // 3. Start Loop
                 isRecording = true;
-                drawToCanvas(); // Loop gambar
-                startMediaRecorder(); // Mulai simpan data
-                startTimer();
-
-                // UI Update
-                placeholder.classList.add('hidden');
-                canvas.classList.remove('hidden');
-                btnStart.classList.add('hidden');
-                btnCamOnly.classList.add('hidden');
-                btnStop.classList.remove('hidden');
-                timerEl.classList.remove('hidden');
-                statusBox.classList.add('hidden');
-
-            } catch (err) {
-                console.error(err);
-                if (err.name === 'NotAllowedError') {
-                    showStatus("Izin ditolak. Anda harus klik 'Allow/Izinkan'.", "error");
-                } else {
-                    showStatus("Gagal memulai: " + err.message + ". <br>Coba tombol 'Mode Kamera Saja' di bawah.", "error");
-                    btnStart.classList.add('hidden');
-                    btnCamOnly.classList.remove('hidden');
-                }
-            }
-        }
-
-        // --- Fallback: Mode Kamera Saja (Vlog Mode) ---
-        async function startCamOnly() {
-            resetUI();
-            try {
-                audioCtx = new AudioContext();
-                destNode = audioCtx.createMediaStreamDestination();
-
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                    audio: true
-                });
-
-                screenVideo.srcObject = stream; // Kita pakai elemen screenVideo sbg view utama
-                await screenVideo.play();
-                streams.push(stream);
-
-                // Canvas setup
-                canvas.width = 1280;
-                canvas.height = 720;
-
-                // Audio setup
-                const src = audioCtx.createMediaStreamSource(stream);
-                src.connect(destNode);
-
-                isRecording = true;
-                // Kita modifikasi draw loop sedikit untuk mode ini
-                const drawLoop = () => {
-                    if(!isRecording) return;
-                    // Gambar kamera full screen
-                    ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
-                    animationId = requestAnimationFrame(drawLoop);
-                }
                 drawLoop();
                 
-                startMediaRecorder();
-                startTimer();
+                // 4. Start Recorder
+                const canvasStream = canvas.captureStream(30);
+                destNode.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t));
+                
+                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
+                mediaRecorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+                mediaRecorder.onstop = saveFile;
+                mediaRecorder.start();
 
-                // UI
-                placeholder.classList.add('hidden');
-                canvas.classList.remove('hidden');
-                btnCamOnly.classList.add('hidden');
+                document.getElementById('instruction').classList.add('hidden');
+                btnStart.classList.add('hidden');
                 btnStop.classList.remove('hidden');
-                timerEl.classList.remove('hidden');
 
             } catch (err) {
-                showStatus("Gagal akses kamera: " + err.message, "error");
+                alert("Gagal: " + err.message);
             }
         }
 
-        // --- Logic: Drawing Canvas (Mixer) ---
-        function drawToCanvas() {
+        function drawLoop() {
             if (!isRecording) return;
-
-            // 1. Gambar Layar (Background)
-            ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
-
-            // 2. Gambar Kamera (PIP) jika aktif
-            if (camVideo.srcObject) {
-                const camW = canvas.width * 0.25; // Ukuran cam 25% dari lebar layar
-                const camH = (camW / 4) * 3; // Aspect ratio 4:3
-                const padding = 20;
-
-                // Posisi: Kanan Bawah
-                const x = canvas.width - camW - padding;
-                const y = canvas.height - camH - padding;
-
-                // Border Putih
+            ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
+            
+            if (document.getElementById('chkCam').checked && camVid.srcObject) {
+                const w = canvas.width * 0.25;
+                const h = w; 
+                const x = canvas.width - w - 20;
+                const y = canvas.height - h - 20;
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x + w/2, y + h/2, w/2, 0, Math.PI*2);
+                ctx.clip();
+                ctx.drawImage(camVid, x, y, w, h);
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 5;
-                ctx.strokeRect(x, y, camW, camH);
-
-                // Gambar Video Cam
-                ctx.drawImage(camVideo, x, y, camW, camH);
+                ctx.stroke();
+                ctx.restore();
             }
-
-            animationId = requestAnimationFrame(drawToCanvas);
-        }
-
-        // --- Logic: Media Recorder (MP4 Handling) ---
-        function startMediaRecorder() {
-            const canvasStream = canvas.captureStream(30);
-            
-            // Gabungkan audio yang sudah dimix
-            if (destNode.stream.getAudioTracks().length > 0) {
-                destNode.stream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
-            }
-
-            // --- Trik MP4 ---
-            // Kita coba urutan prioritas mimeType
-            const mimeOptions = [
-                'video/mp4', // Safari / Chrome modern
-                'video/webm;codecs=h264', // Format paling dekat dengan MP4
-                'video/webm;codecs=vp9',
-                'video/webm' // Fallback terakhir
-            ];
-
-            let selectedMime = mimeOptions.find(type => MediaRecorder.isTypeSupported(type)) || '';
-            console.log("Using MIME:", selectedMime);
-
-            mediaRecorder = new MediaRecorder(canvasStream, {
-                mimeType: selectedMime,
-                videoBitsPerSecond: 2500000 // 2.5 Mbps (Kualitas sedang agar ringan di HP)
-            });
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) chunks.push(e.data);
-            };
-
-            mediaRecorder.onstop = saveFile;
-            mediaRecorder.start();
+            requestAnimationFrame(drawLoop);
         }
 
         function stopRecording() {
             if (!isRecording) return;
             isRecording = false;
-            
-            if (mediaRecorder) mediaRecorder.stop();
-            
-            // Matikan semua stream (lampu kamera mati)
-            streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
-            if (audioCtx) audioCtx.close();
-            
-            cancelAnimationFrame(animationId);
-            clearInterval(timerInt);
-
+            mediaRecorder.stop();
+            streams.forEach(s => s.getTracks().forEach(t => t.stop()));
+            audioCtx.close();
             btnStop.classList.add('hidden');
-            timerEl.classList.add('hidden');
         }
 
         function saveFile() {
-            // Trik Ekstensi MP4:
-            // Meskipun browser mungkin merekam dalam container WebM,
-            // kita beri nama file .mp4. Player modern (VLC, HP Player) 
-            // biasanya cukup pintar untuk mendeteksi codecnya dan memutarnya.
-            // Ini satu-satunya cara "MP4" tanpa server converter.
-            
-            let blobType = mediaRecorder.mimeType;
-            // Jika browser pakai webm, kita tetap bungkus blobnya, tapi namanya nanti .mp4
-            const blob = new Blob(chunks, { type: blobType });
-            const url = URL.createObjectURL(blob);
-            
-            const now = new Date();
-            const filename = `Rekaman_${now.getHours()}${now.getMinutes()}.mp4`; // Paksa ekstensi .mp4
-
-            downloadLink.href = url;
-            downloadLink.download = filename;
-            downloadArea.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            canvas.classList.add('hidden');
-        }
-
-        function resetUI() {
-            chunks = [];
-            streams = [];
-            downloadArea.classList.add('hidden');
-            statusBox.classList.add('hidden');
-        }
-
-        function startTimer() {
-            startTime = Date.now();
-            timerInt = setInterval(() => {
-                const diff = Math.floor((Date.now() - startTime) / 1000);
-                const m = Math.floor(diff / 60).toString().padStart(2, '0');
-                const s = (diff % 60).toString().padStart(2, '0');
-                timerEl.querySelector('span').innerText = `${m}:${s}`;
-            }, 1000);
+            const blob = new Blob(chunks, {type: 'video/webm'});
+            btnDownload.href = URL.createObjectURL(blob);
+            btnDownload.download = `Rec_${Date.now()}.mp4`;
+            btnDownload.classList.remove('hidden');
         }
     </script>
 </body>
