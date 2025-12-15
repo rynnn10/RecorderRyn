@@ -3,106 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perekam Layar & Kamera MP4</title>
+    <title>Cek Dukungan Rekam Layar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Animasi indikator rekam */
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .recording-dot {
-            animation: pulse 1.5s infinite ease-in-out;
-        }
-        /* Styling khusus agar video fit di layar HP */
-        canvas {
-            max-height: 70vh;
-            width: 100%;
-            object-fit: contain;
-            background: #000;
-        }
-    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col font-sans">
+<body class="bg-gray-900 text-white p-4 font-sans">
 
-    <!-- Header Sederhana -->
-    <nav class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-2">
-            <i class="fa-solid fa-file-video text-red-500 text-xl"></i>
-            <h1 class="font-bold text-lg">WebRec <span class="text-xs bg-blue-600 px-2 py-0.5 rounded text-white ml-1">MP4</span></h1>
-        </div>
-        <div id="timer" class="hidden font-mono text-xl font-bold text-red-400 flex items-center gap-2">
-            <div class="w-3 h-3 bg-red-500 rounded-full recording-dot"></div>
-            <span>00:00</span>
-        </div>
-    </nav>
+    <div class="max-w-md mx-auto space-y-6">
+        
+        <header class="border-b border-gray-700 pb-4">
+            <h1 class="text-xl font-bold text-yellow-400"><i class="fa-solid fa-stethoscope"></i> Diagnosa HP</h1>
+            <p class="text-gray-400 text-sm">Kenapa saya tidak bisa rekam layar?</p>
+        </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow flex flex-col items-center justify-center p-4 gap-4">
-
-        <!-- Error / Info Box -->
-        <div id="statusBox" class="w-full max-w-lg hidden p-4 rounded-lg text-sm mb-2"></div>
-
-        <!-- Preview Area -->
-        <div class="relative w-full max-w-lg border-2 border-gray-700 rounded-xl overflow-hidden shadow-2xl bg-black">
+        <!-- Status Box -->
+        <div id="statusCard" class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+            <h2 class="font-bold mb-3">Hasil Pengecekan Sistem:</h2>
             
-            <!-- Placeholder saat belum mulai -->
-            <div id="placeholder" class="aspect-video flex flex-col items-center justify-center text-gray-500 p-6 text-center">
-                <i class="fa-solid fa-mobile-screen-button text-4xl mb-3 text-gray-600"></i>
-                <h3 class="text-white font-semibold mb-2">Siap Merekam</h3>
-                <p class="text-xs">
-                    Mendukung Rekam Layar & Kamera Wajah.<br>
-                    <span class="text-yellow-500">Note: iPhone (iOS) memblokir rekam layar web.</span>
-                </p>
+            <!-- Cek 1: Protokol -->
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                <span class="text-sm">1. Protokol Aman (HTTPS)</span>
+                <span id="statusProtocol" class="text-xs font-mono px-2 py-1 rounded bg-gray-700">Checking...</span>
             </div>
 
-            <!-- Canvas Hasil Gabungan -->
-            <canvas id="outputCanvas" class="hidden"></canvas>
+            <!-- Cek 2: API Layar -->
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                <span class="text-sm">2. Fitur Layar (API)</span>
+                <span id="statusAPI" class="text-xs font-mono px-2 py-1 rounded bg-gray-700">Checking...</span>
+            </div>
 
-            <!-- Overlay Kamera (Preview Kecil) -->
-            <!-- Kita menggambar kamera langsung ke canvas, jadi elemen video ini disembunyikan -->
-            <video id="screenVideo" autoplay muted playsinline class="hidden"></video>
-            <video id="camVideo" autoplay muted playsinline class="hidden"></video>
+            <!-- Kesimpulan -->
+            <div id="conclusion" class="mt-4 p-3 bg-blue-900/30 text-blue-200 text-sm rounded border border-blue-500/50 hidden">
+                Menunggu hasil diagnosa...
+            </div>
         </div>
 
-        <!-- Controls -->
-        <div class="w-full max-w-lg bg-gray-800 p-4 rounded-xl border border-gray-700 mt-2">
+        <!-- Area Video (Jika Berhasil) -->
+        <div id="demoArea" class="hidden space-y-4">
+            <p class="text-green-400 text-sm text-center font-bold">Selamat! HP Anda mendukung.</p>
+            <video id="preview" autoplay muted class="w-full bg-black rounded-lg border border-green-500" style="max-height: 400px;"></video>
+            <button onclick="startTest()" class="w-full py-3 bg-green-600 hover:bg-green-500 rounded font-bold shadow-lg">
+                Coba Rekam Sekarang
+            </button>
+        </div>
+
+        <!-- Panduan Hosting (Jika Gagal) -->
+        <div id="fixGuide" class="hidden space-y-4">
+            <div class="bg-red-900/20 p-4 rounded-lg border border-red-500/50">
+                <h3 class="font-bold text-red-300 mb-2"><i class="fa-solid fa-triangle-exclamation"></i> Masalah Ditemukan</h3>
+                <p id="fixText" class="text-sm text-gray-300">Penjelasan error...</p>
+            </div>
+
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-bold text-white mb-2">Solusi: Jangan Buka File Langsung!</h3>
+                <ol class="list-decimal list-inside text-sm text-gray-400 space-y-2">
+                    <li>Kode ini tidak akan jalan jika alamatnya <code>file://...</code></li>
+                    <li>Gunakan situs hosting gratis untuk menjalankannya.</li>
+                    <li>Kunjungi <a href="https://tiiny.host/" target="_blank" class="text-blue-400 underline">Tiiny.host</a> (atau yang serupa).</li>
+                    <li>Upload file HTML ini ke sana.</li>
+                    <li>Buka link yang diberikan (https://...).</li>
+                    <li>Coba lagi, pasti bisa!</li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- System Check ---
+        const statusProtocol = document.getElementById('statusProtocol');
+        const statusAPI = document.getElementById('statusAPI');
+        const conclusion = document.getElementById('conclusion');
+        const demoArea = document.getElementById('demoArea');
+        const fixGuide = document.getElementById('fixGuide');
+        const fixText = document.getElementById('fixText');
+
+        function runDiagnostics() {
+            let isSecure = false;
+            let hasAPI = false;
+
+            // 1. Cek Protokol (HTTPS / Localhost)
+            const protocol = window.location.protocol;
+            if (protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                statusProtocol.textContent = "AMAN (HTTPS/Local)";
+                statusProtocol.className = "text-xs font-mono px-2 py-1 rounded bg-green-600 text-white";
+                isSecure = true;
+            } else {
+                statusProtocol.textContent = "TIDAK AMAN (" + protocol + ")";
+                statusProtocol.className = "text-xs font-mono px-2 py-1 rounded bg-red-600 text-white";
+            }
+
+            // 2. Cek API
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                statusAPI.textContent = "ADA (Supported)";
+                statusAPI.className = "text-xs font-mono px-2 py-1 rounded bg-green-600 text-white";
+                hasAPI = true;
+            } else {
+                statusAPI.textContent = "HILANG (Missing)";
+                statusAPI.className = "text-xs font-mono px-2 py-1 rounded bg-red-600 text-white";
+            }
+
+            // 3. Kesimpulan
+            conclusion.classList.remove('hidden');
             
-            <!-- Toggles -->
-            <div class="flex justify-between mb-6 px-2">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="toggleMic" checked class="w-4 h-4 accent-blue-500">
-                    <span class="text-sm text-gray-300"><i class="fa-solid fa-microphone mr-1"></i> Suara Mic</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="toggleCam" checked class="w-4 h-4 accent-blue-500">
-                    <span class="text-sm text-gray-300"><i class="fa-solid fa-user mr-1"></i> Wajah (PIP)</span>
-                </label>
-            </div>
+            if (!isSecure) {
+                conclusion.innerHTML = "<strong>Penyebab Gagal:</strong> Anda membuka file secara langsung (Offline/File). Browser memblokir fitur kamera/layar demi keamanan.";
+                conclusion.className = "mt-4 p-3 bg-red-900/30 text-red-200 text-sm rounded border border-red-500/50";
+                
+                fixGuide.classList.remove('hidden');
+                fixText.textContent = "Browser modern memblokir akses layar pada file lokal. Anda harus meng-upload file ini ke internet (hosting) agar menjadi link HTTPS.";
+            
+            } else if (isSecure && !hasAPI) {
+                conclusion.innerHTML = "<strong>Penyebab Gagal:</strong> HP/Browser Anda memang tidak mendukung fitur ini meskipun sudah pakai HTTPS.";
+                conclusion.className = "mt-4 p-3 bg-orange-900/30 text-orange-200 text-sm rounded border border-orange-500/50";
+                
+                fixGuide.classList.remove('hidden');
+                fixText.innerHTML = "Coba update Chrome, atau buka <code>chrome://flags</code> dan aktifkan 'Screen Capture'. Jika tetap gagal, berarti hardware/OS membatasi.";
 
-            <!-- Buttons -->
-            <div class="flex flex-col gap-3">
-                <button id="btnStart" onclick="startRecording()" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-lg w-full flex items-center justify-center gap-2 shadow-lg transition-all">
-                    <i class="fa-solid fa-circle text-xs"></i> Mulai Rekam Layar & Cam
-                </button>
+            } else {
+                conclusion.innerHTML = "<strong>Sistem Normal:</strong> Seharusnya rekam layar bisa berjalan.";
+                conclusion.className = "mt-4 p-3 bg-green-900/30 text-green-200 text-sm rounded border border-green-500/50";
+                demoArea.classList.remove('hidden');
+            }
+        }
 
-                <button id="btnStop" onclick="stopRecording()" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg w-full flex items-center justify-center gap-2 shadow-lg transition-all animate-pulse">
-                    <i class="fa-solid fa-stop"></i> Stop & Simpan MP4
-                </button>
+        async function startTest() {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                document.getElementById('preview').srcObject = stream;
+            } catch (err) {
+                alert("Error saat mencoba merekam: " + err.message);
+            }
+        }
 
-                <!-- Tombol Fallback khusus HP jika rekam layar gagal -->
-                <button id="btnCamOnly" onclick="startCamOnly()" class="hidden bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-6 rounded-lg w-full border border-gray-600">
-                    <i class="fa-solid fa-camera mr-1"></i> Gagal rekam layar? Mode Kamera Saja
-                </button>
-            </div>
-        </div>
+        // Jalankan saat load
+        window.addEventListener('load', runDiagnostics);
 
-        <!-- Hasil Download -->
-        <div id="downloadArea" class="hidden w-full max-w-lg bg-green-900/40 border border-green-600 p-4 rounded-xl text-center">
-            <p class="text-green-300 font-semibold mb-3">Rekaman Selesai!</p>
-            <a id="downloadLink" class="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow-md hover:bg-green-500 transition-colors">
+    </script>
+</body>
+</html>
+
                 <i class="fa-solid fa-download mr-2"></i> Download Video (.mp4)
             </a>
             <button onclick="location.reload()" class="block w-full mt-3 text-xs text-gray-400 underline">Rekam Ulang</button>
