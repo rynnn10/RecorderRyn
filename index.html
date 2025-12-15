@@ -3,106 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Meta tag PWA -->
+    
+    <!-- PWA Settings -->
     <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <title>ScreenRec Pro</title>
+    <title>ScreenRec Smart</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; overscroll-behavior: none; }
-        canvas { max-width: 100%; max-height: 80vh; object-fit: contain; }
-        .hidden { display: none !important; }
+        body { background-color: #0f172a; font-family: sans-serif; }
+        /* Agar video responsif di HP */
+        canvas, video { max-width: 100%; max-height: 60vh; border-radius: 12px; }
     </style>
 </head>
-<body class="text-white h-screen flex flex-col overflow-hidden">
+<body class="text-white min-h-screen flex flex-col">
 
-    <!-- Header App -->
-    <div class="flex justify-between items-center p-4 bg-slate-800 border-b border-slate-700 select-none">
-        <h1 class="font-bold text-lg flex items-center gap-2">
+    <!-- Header -->
+    <nav class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+        <h1 class="font-bold flex items-center gap-2">
             <i class="fa-solid fa-video text-blue-500"></i> Recorder
         </h1>
-        <!-- Tombol Install PWA (Akan muncul otomatis) -->
-        <button id="btnInstall" class="hidden text-xs bg-white text-slate-900 px-3 py-1 rounded-full font-bold">
-            <i class="fa-solid fa-download"></i> Install App
-        </button>
-    </div>
+        <div id="modeBadge" class="text-xs px-2 py-1 rounded bg-slate-700 text-slate-400">Loading...</div>
+    </nav>
 
     <!-- Main Content -->
-    <div class="flex-grow relative flex flex-col items-center justify-center p-2 bg-black">
-        <div id="instruction" class="absolute text-center text-slate-500 pointer-events-none z-10">
-            <i class="fa-solid fa-layer-group text-4xl mb-2"></i>
-            <p>Preview akan muncul di sini</p>
-        </div>
+    <main class="flex-grow flex flex-col items-center justify-center p-4 gap-4">
         
-        <canvas id="mainCanvas" class="w-full h-full"></canvas>
-        
-        <video id="screenVid" autoplay muted playsinline class="hidden"></video>
-        <video id="camVid" autoplay muted playsinline class="hidden"></video>
-    </div>
-
-    <!-- Controls Bottom Sheet -->
-    <div class="bg-slate-800 p-4 rounded-t-2xl border-t border-slate-700 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-        
-        <div class="flex justify-center mb-4 gap-6">
-            <label class="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" id="chkMic" checked class="accent-blue-500 w-4 h-4"> Mic
-            </label>
-            <label class="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" id="chkCam" checked class="accent-blue-500 w-4 h-4"> Cam
-            </label>
+        <!-- Pesan Warning Khusus PWA -->
+        <div id="pwaWarning" class="hidden w-full bg-orange-900/40 border border-orange-500/50 p-4 rounded-xl text-sm text-orange-200">
+            <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+            <strong>Mode Aplikasi Terdeteksi:</strong><br>
+            Android memblokir "Rekam Layar" di mode Aplikasi.
+            <ul class="list-disc list-inside mt-2 text-xs text-orange-300 opacity-80">
+                <li>Anda hanya bisa merekam <b>Kamera Wajah</b> di sini.</li>
+                <li>Untuk rekam layar, buka website ini lewat Chrome biasa.</li>
+            </ul>
+            <button onclick="window.open(window.location.href, '_system');" class="mt-3 bg-orange-700 text-white px-3 py-2 rounded text-xs font-bold w-full">
+                <i class="fa-brands fa-chrome"></i> Buka di Chrome Browser
+            </button>
         </div>
 
-        <div class="space-y-3">
-            <button id="btnStart" onclick="startRecording()" class="w-full py-3 bg-blue-600 active:bg-blue-700 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
-                <i class="fa-solid fa-circle text-xs"></i> Mulai Rekam
-            </button>
+        <!-- Preview Canvas -->
+        <canvas id="outputCanvas" class="bg-black border border-slate-700 hidden"></canvas>
+        
+        <!-- Placeholder -->
+        <div id="placeholder" class="text-center text-slate-500 py-10">
+            <i class="fa-solid fa-camera text-4xl mb-2"></i>
+            <p>Siap Merekam</p>
+        </div>
 
-            <button id="btnStop" onclick="stopRecording()" class="hidden w-full py-3 bg-red-600 active:bg-red-700 rounded-xl font-bold text-lg shadow-lg animate-pulse">
-                Stop
-            </button>
+        <!-- Controls -->
+        <div class="w-full bg-slate-800 p-4 rounded-xl space-y-3">
             
-            <a id="btnDownload" class="hidden w-full py-3 bg-emerald-600 active:bg-emerald-700 rounded-xl font-bold text-center block">
-                Simpan Video
+            <!-- Tombol Start Screen (Akan disembunyikan jika tidak support) -->
+            <button id="btnScreen" onclick="startRecording('screen')" class="w-full py-3 bg-blue-600 rounded-lg font-bold shadow flex items-center justify-center gap-2">
+                <i class="fa-solid fa-display"></i> Rekam Layar & Cam
+            </button>
+
+            <!-- Tombol Start Camera Only (Selalu muncul) -->
+            <button id="btnCam" onclick="startRecording('cam')" class="w-full py-3 bg-slate-700 rounded-lg font-bold shadow flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user"></i> Rekam Kamera Saja
+            </button>
+
+            <button id="btnStop" onclick="stopRecording()" class="hidden w-full py-3 bg-red-600 rounded-lg font-bold animate-pulse">
+                Stop & Simpan
+            </button>
+
+            <!-- Download Link -->
+            <a id="downloadLink" class="hidden block w-full py-3 bg-green-600 text-center rounded-lg font-bold">
+                Download Video
             </a>
         </div>
-    </div>
+    </main>
 
-    <!-- Logic Script -->
+    <!-- Hidden Video Elements -->
+    <video id="sourceVideo" autoplay muted playsinline class="hidden"></video>
+    <video id="pipVideo" autoplay muted playsinline class="hidden"></video>
+
     <script>
-        // --- PWA INSTALL LOGIC ---
-        let deferredPrompt;
-        const btnInstall = document.getElementById('btnInstall');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            btnInstall.classList.remove('hidden');
-        });
-
-        btnInstall.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    btnInstall.classList.add('hidden');
-                }
-                deferredPrompt = null;
-            }
-        });
-
+        // --- Setup PWA Service Worker ---
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
         }
 
-        // --- RECORDING LOGIC (Sama seperti sebelumnya) ---
-        const canvas = document.getElementById('mainCanvas');
+        // --- Elements ---
+        const btnScreen = document.getElementById('btnScreen');
+        const btnCam = document.getElementById('btnCam');
+        const btnStop = document.getElementById('btnStop');
+        const pwaWarning = document.getElementById('pwaWarning');
+        const modeBadge = document.getElementById('modeBadge');
+        
+        const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
-        const screenVid = document.getElementById('screenVid');
-        const camVid = document.getElementById('camVid');
+        const sourceVideo = document.getElementById('sourceVideo');
+        const pipVideo = document.getElementById('pipVideo');
+
+        // --- Variabel Global ---
+        let mediaRecorder;
+        let chunks = [];
+        let streams = [];
+        let isRecording = false;
+        let animationId;
+        let activeMode = ''; // 'screen' atau 'cam'
+
+        // --- 1. DETEKSI FITUR (Solusi Masalah Anda) ---
+        function checkSupport() {
+            // Cek apakah browser punya fungsi getDisplayMedia
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                // Berhasil: Ini Browser Biasa / Desktop
+                modeBadge.textContent = "Mode: Browser Support";
+                modeBadge.classList.add("bg-green-900", "text-green-300");
+                btnScreen.classList.remove('hidden'); // Tampilkan tombol rekam layar
+            } else {
+                // Gagal: Ini Mode PWA Android atau iPhone
+                modeBadge.textContent = "Mode: App / Restricted";
+                modeBadge.classList.add("bg-orange-900", "text-orange-300");
+                
+                // SEMBUNYIKAN TOMBOL REKAM LAYAR AGAR TIDAK ERROR
+                btnScreen.classList.add('hidden'); 
+                
+                // Munculkan pesan peringatan
+                pwaWarning.classList.remove('hidden');
+                
+                // Highlight tombol kamera sebagai satu-satunya opsi
+                btnCam.classList.add('ring', 'ring-blue-500', 'ring-offset-2');
+                btnCam.innerText = "Mulai Rekam (Kamera Saja)";
+            }
+        }
+
+        // Jalankan pengecekan saat loading
+        checkSupport();
+
+        // --- 2. Start Recording Logic ---
+        async function startRecording(mode) {
+            activeMode = mode;
+            chunks = [];
+            
+            try {
+                let mainStream;
+
+                if (mode === 'screen') {
+                    // Logic Rekam Layar (Hanya jalan di Browser)
+                    mainStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { frameRate: 30 },
+                        audio: true
+                    });
+                } else {
+                    // Logic Rekam Kamera (Jalan di PWA & Browser)
+                    mainStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 720 } },
+                        audio: true
+                    });
+                }
+                
+                streams.push(mainStream);
+                sourceVideo.srcObject = mainStream;
+                await sourceVideo.play();
+
+                // Setup Canvas Size
+                const settings = mainStream.getVideoTracks()[0].getSettings();
+                canvas.width = settings.width || 640;
+                canvas.height = settings.height || 480;
+
+                // Jika mode Screen, coba aktifkan Kamera PIP
+                if (mode === 'screen') {
+                    try {
+                        const camStream = await navigator.mediaDevices.getUserMedia({
+                            video: { width: 200, facingMode: 'user' }
+                        });
+                        streams.push(camStream);
+                        pipVideo.srcObject = camStream;
+                        await pipVideo.play();
+                    } catch (e) { console.log("No PIP Cam"); }
+                }
+
+                // Mulai Proses
+                isRecording = true;
+                drawCanvas();
+                startRecorder(canvas.captureStream(30));
+                updateUI(true);
+
+            } catch (err) {
+                alert("Gagal Memulai: " + err.message);
+            }
+        }
+
+        // --- 3. Drawing Loop ---
+        function drawCanvas() {
+            if (!isRecording) return;
+
+            // Gambar Background (Layar atau Kamera Utama)
+            ctx.drawImage(sourceVideo, 0, 0, canvas.width, canvas.height);
+
+            // Gambar PIP jika mode Screen dan ada Kamera
+            if (activeMode === 'screen' && pipVideo.srcObject) {
+                const w = canvas.width * 0.25;
+                const h = (w/4)*3;
+                const x = canvas.width - w - 20;
+                const y = canvas.height - h - 20;
+
+                ctx.save();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x,y,w,h);
+                ctx.drawImage(pipVideo, x, y, w, h);
+                ctx.restore();
+            }
+
+            animationId = requestAnimationFrame(drawCanvas);
+        }
+
+        // --- 4. Recorder ---
+        function startRecorder(stream) {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+            mediaRecorder.onstop = saveFile;
+            mediaRecorder.start();
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            if(mediaRecorder) mediaRecorder.stop();
+            streams.forEach(s => s.getTracks().forEach(t => t.stop()));
+            cancelAnimationFrame(animationId);
+            updateUI(false);
+        }
+
+        function saveFile() {
+            const blob = new Blob(chunks, {type: 'video/webm'});
+            const url = URL.createObjectURL(blob);
+            const a = document.getElementById('downloadLink');
+            a.href = url;
+            a.download = `Rec_${Date.now()}.mp4`;
+            a.classList.remove('hidden');
+            a.innerText = "Download Video Selesai";
+        }
+
+        function updateUI(recording) {
+            const el = id => document.getElementById(id);
+            if (recording) {
+                el('placeholder').classList.add('hidden');
+                el('outputCanvas').classList.remove('hidden');
+                el('btnScreen').classList.add('hidden');
+                el('btnCam').classList.add('hidden');
+                el('pwaWarning').classList.add('hidden');
+                el('btnStop').classList.remove('hidden');
+            } else {
+                el('btnStop').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+
+
         const btnStart = document.getElementById('btnStart');
         const btnStop = document.getElementById('btnStop');
         const btnDownload = document.getElementById('btnDownload');
